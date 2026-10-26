@@ -4,6 +4,7 @@ Connects gas selection and decompression settings to the tissue model.
 */
 #include "configComputer.h"
 #include "diveController.h"
+#include <diag/Trace.h>
 
 namespace {
 const float DIVE_START_M = 1.2f; //Dive starts strictly deeper than 1.2 metres.
@@ -14,6 +15,8 @@ DiveController::DiveController(BuhlmannModel &model, TissueStore &store)
     : model_(model), store_(store), gases_(), settings_(), plan_(),
       have_last_(false), last_p_(0.0f), last_tick_(0), last_save_(0),
       in_dive_(false), depth_m_(0.0f), max_depth_m_(0.0f), dive_ms_(0), shallow_ms_(0),
+      dive_start_time_(0), depth_integral_m_s_(0.0f),
+      dive_log_ready_(false),
       ndl_min_(BuhlmannModel::NDL_MAX), ceiling_m_(0.0f)
 {
     plan_.count = 0;
@@ -48,12 +51,15 @@ void DiveController::begin(float p_surface, time_t now)
 }
 
 //Starts a fresh dive interval without discarding residual tissue loading.
-void DiveController::start_dive()
+void DiveController::start_dive(time_t now)
 {
     in_dive_ = true;
     dive_ms_ = 0;
     shallow_ms_ = 0;
     max_depth_m_ = 0.0f;
+    dive_start_time_ = now;
+    depth_integral_m_s_ = 0.0f;
+    dive_log_ready_ = true;
     model_.reset_anchor();
 }
 
@@ -63,6 +69,17 @@ void DiveController::end_dive(time_t now)
     in_dive_ = false;
     model_.reset_anchor();
     gases_.set_active(0);
+    if (dive_log_ready_) {
+        const float duration_s = dive_ms_ / 1000.0f;
+        const DiveLogRecord record = {
+            dive_start_time_, now, dive_ms_ / 1000, max_depth_m_,
+            duration_s > 0.0f ? depth_integral_m_s_ / duration_s : 0.0f
+        };
+        if (!diveLog.append(record)) trace_printf("Dive log write failed.\n");
+    } else {
+        trace_printf("Restarted dive is not logged; start data is unavailable.\n");
+    }
+    dive_log_ready_ = false;
     save(last_tick_, now);
 }
 
@@ -85,6 +102,7 @@ void DiveController::sample(float p_amb, uint32_t tick_ms, time_t now)
 
         if (in_dive_) {
             dive_ms_ += dt_ms;
+            depth_integral_m_s_ += depth_m_ * (dt_ms / 1000.0f);
             //Accumulates time using the preceding sample depth; deeper samples reset the shallow timer.
             shallow_ms_ = depth_m_ < DIVE_END_M ? shallow_ms_ + dt_ms : 0;
         }
@@ -96,7 +114,7 @@ void DiveController::sample(float p_amb, uint32_t tick_ms, time_t now)
     if (depth_m_ < 0.0f) depth_m_ = 0.0f;
 
     //Starts only beyond 1.2 m; hysteresis ends the dive after 60 s below 0.8 m.
-    if (!in_dive_ && depth_m_ > DIVE_START_M) start_dive();
+    if (!in_dive_ && depth_m_ > DIVE_START_M) start_dive(now);
     if (in_dive_) {
         if (depth_m_ > max_depth_m_) max_depth_m_ = depth_m_;
         if (shallow_ms_ >= DIVE_END_MS) {

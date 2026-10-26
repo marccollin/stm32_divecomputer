@@ -16,6 +16,15 @@
 SdCard sdcard;
 FATFS sdcard_ff;
 
+//All SD-card stores share this mount state to avoid reinitializing an active card.
+bool sdcard_mount(void)
+{
+	static bool mounted = false;
+	if (!mounted)
+		mounted = f_mount(&sdcard_ff, "", 1) == FR_OK;
+	return mounted;
+}
+
 int SdCard::enable(void)
 {
 	GPIO_InitTypeDef gpio;

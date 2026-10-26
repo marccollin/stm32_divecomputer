@@ -7,6 +7,7 @@ Provides gas, decompression, clock and display-setting pages.
 #include <time.h>
 
 #include "configComputer.h"
+#include "diveLog.h"
 #include "menu.h"
 #include "rtc.h"
 #include "units.h"
@@ -182,17 +183,15 @@ namespace {
 DiveController *dive = nullptr;
 
 //Builds an integer field with inclusive bounds, positive step and optional unit suffix.
-EditField number(const char *label, int value, int min, int max, int step, const char *suffix = nullptr)
+void number(EditField &f, const char *label, int value, int min, int max, int step, const char *suffix = nullptr)
 {
-    EditField f = {label, value, min, max, step, nullptr, 0, suffix};
-    return f;
+    f = EditField{label, value, min, max, step, nullptr, 0, suffix};
 }
 
 //Builds a named choice field with zero-based indices 0..n-1.
-EditField choice(const char *label, int value, const char *const *names, int n)
+void choice(EditField &f, const char *label, int value, const char *const *names, int n)
 {
-    EditField f = {label, value, 0, n - 1, 1, names, 0, nullptr};
-    return f;
+    f = EditField{label, value, 0, n - 1, 1, names, 0, nullptr};
 }
 
 /*
@@ -208,8 +207,8 @@ public:
         const GasMix g = index < 0 ? GasMix{0.32f, 0.0f} : dive->gases().get(index);
         if (index < 0) snprintf(title, sizeof(title), "ADD MIX");
         else snprintf(title, sizeof(title), "EDIT MIX %d", index + 1);
-        fields[0] = number("O2", percent(g.o2), 5, 100, 1, "%");
-        fields[1] = number("HE", percent(g.he), 0, 95, 1, "%");
+        number(fields[0], "O2", percent(g.o2), 5, 100, 1, "%");
+        number(fields[1], "HE", percent(g.he), 0, 95, 1, "%");
         count = 2;
         ui.show(*this);
     }
@@ -336,8 +335,8 @@ public:
     void open(Ui &ui)
     {
         snprintf(title, sizeof(title), "GRADIENT FACTORS");
-        fields[0] = number("GF LOW", percent(dive->settings().gf_low), 10, 100, 5, "%");
-        fields[1] = number("GF HIGH", percent(dive->settings().gf_high), 10, 100, 5, "%");
+        number(fields[0], "GF LOW", percent(dive->settings().gf_low), 10, 100, 5, "%");
+        number(fields[1], "GF HIGH", percent(dive->settings().gf_high), 10, 100, 5, "%");
         count = 2;
         ui.show(*this);
     }
@@ -362,7 +361,7 @@ public:
     void open(Ui &ui)
     {
         snprintf(title, sizeof(title), "SALINITY");
-        fields[0] = choice("WATER", static_cast<int>(configComputer.get_water_type()), WATER_NAMES, 2);
+        choice(fields[0], "WATER", static_cast<int>(configComputer.get_water_type()), WATER_NAMES, 2);
         count = 1;
         ui.show(*this);
     }
@@ -386,8 +385,8 @@ public:
     void open(Ui &ui)
     {
         snprintf(title, sizeof(title), "PPO2 MAX");
-        fields[0] = number("BOTTOM", (int) (dive->settings().max_ppo2_bottom * 10.0f + 0.5f), 10, 16, 1);
-        fields[1] = number("DECO", (int) (dive->settings().max_ppo2_deco * 10.0f + 0.5f), 10, 16, 1);
+        number(fields[0], "BOTTOM", (int) (dive->settings().max_ppo2_bottom * 10.0f + 0.5f), 10, 16, 1);
+        number(fields[1], "DECO", (int) (dive->settings().max_ppo2_deco * 10.0f + 0.5f), 10, 16, 1);
         fields[0].decimals = 1;
         fields[1].decimals = 1;
         count = 2;
@@ -455,11 +454,11 @@ public:
         gmtime_r(&now, &t);
         int year = t.tm_year + 1900;
         if (year < 2024 || year > 2099) year = 2025;
-        fields[0] = number("YEAR", year, 2024, 2099, 1);
-        fields[1] = number("MONTH", t.tm_mon + 1, 1, 12, 1);
-        fields[2] = number("DAY", t.tm_mday, 1, 31, 1);
-        fields[3] = number("HOUR", t.tm_hour, 0, 23, 1);
-        fields[4] = number("MINUTE", t.tm_min, 0, 59, 1);
+        number(fields[0], "YEAR", year, 2024, 2099, 1);
+        number(fields[1], "MONTH", t.tm_mon + 1, 1, 12, 1);
+        number(fields[2], "DAY", t.tm_mday, 1, 31, 1);
+        number(fields[3], "HOUR", t.tm_hour, 0, 23, 1);
+        number(fields[4], "MINUTE", t.tm_min, 0, 59, 1);
         count = 5;
         clamp();
         ui.show(*this);
@@ -499,10 +498,10 @@ public:
         kind = k;
         if (kind == Units) {
             snprintf(title, sizeof(title), "UNITS");
-            fields[0] = choice("UNITS", static_cast<int>(configComputer.get_system_unit()), UNIT_NAMES, 2);
+            choice(fields[0], "UNITS", static_cast<int>(configComputer.get_system_unit()), UNIT_NAMES, 2);
         } else {
             snprintf(title, sizeof(title), "LANGUAGE");
-            fields[0] = choice("LANGUAGE", static_cast<int>(configComputer.get_lang()), LANG_NAMES, 2);
+            choice(fields[0], "LANGUAGE", static_cast<int>(configComputer.get_lang()), LANG_NAMES, 2);
         }
         count = 1;
         ui.show(*this);
@@ -561,25 +560,198 @@ protected:
 SystemMenu systemMenu;
 
 /*
-Root menu restricting navigation to gas selection while a dive is active.
+Shows the selected completed dive's summary, with RTC-compatible UTC timestamps.
+*/
+class DiveDetailPage final : public Page {
+public:
+    void open(Ui &ui, int index)
+    {
+        has_record_ = diveLog.get(index, record_);
+        if (has_record_) snprintf(title_, sizeof(title_), "DIVE %02d", index + 1);
+        else snprintf(title_, sizeof(title_), "LOG ERROR");
+        ui.show(*this);
+    }
+
+    void open_log(Ui &ui, const DiveLogRecord &record)
+    {
+        record_ = record;
+        has_record_ = true;
+        snprintf(title_, sizeof(title_), "DIVE");
+        ui.show(*this);
+    }
+
+    void on_button(Ui &ui, ButtonId id) override
+    {
+        if (id == ButtonId::Second) ui.back();
+    }
+
+    void draw(u8g_t *u8g) override
+    {
+        u8g_SetFont(u8g, u8g_font_helvR08);
+        u8g_SetFontPosTop(u8g);
+        draw_title(u8g, title_);
+        if (!has_record_) {
+            u8g_DrawStr(u8g, 2, TITLE_H + 2, "LOG READ ERROR");
+            u8g_SetFontPosBaseline(u8g);
+            return;
+        }
+
+        char max_depth[12], average_depth[12], value[28];
+        units::format_depth(record_.max_depth_m, configComputer.get_system_unit(),
+                            max_depth, sizeof(max_depth));
+        units::format_depth(record_.average_depth_m, configComputer.get_system_unit(),
+                            average_depth, sizeof(average_depth));
+        snprintf(value, sizeof(value), "MAX %s", max_depth);
+        u8g_DrawStr(u8g, 2, 13, value);
+        snprintf(value, sizeof(value), "AVG %s", average_depth);
+        u8g_DrawStr(u8g, 2, 23, value);
+        snprintf(value, sizeof(value), "TIME %lu:%02lu",
+                 (unsigned long) (record_.duration_s / 60),
+                 (unsigned long) (record_.duration_s % 60));
+        u8g_DrawStr(u8g, 2, 33, value);
+        draw_timestamp(u8g, "START", record_.start_time, 43);
+        draw_timestamp(u8g, "END", record_.end_time, 53);
+        u8g_SetFontPosBaseline(u8g);
+    }
+
+private:
+    static void draw_timestamp(u8g_t *u8g, const char *label, time_t timestamp, int y)
+    {
+        struct tm t;
+        if (gmtime_r(&timestamp, &t) == nullptr) {
+            char value[28];
+            snprintf(value, sizeof(value), "%s --/--/-- --:--", label);
+            u8g_DrawStr(u8g, 2, y, value);
+            return;
+        }
+        //Sized for GCC's worst-case int widths so -Wformat-truncation stays quiet.
+        char value[64];
+        snprintf(value, sizeof(value), "%s %02d/%02d/%02d %02d:%02d",
+                 label, t.tm_mday, t.tm_mon + 1, (t.tm_year + 1900) % 100,
+                 t.tm_hour, t.tm_min);
+        u8g_DrawStr(u8g, 2, y, value);
+    }
+
+    DiveLogRecord record_;
+    char title_[20];
+    bool has_record_ = false;
+};
+DiveDetailPage diveDetail;
+
+/*
+Scrollable chronological list of completed dives stored on the SD card.
+*/
+class DiveLogMenu final : public MenuPage {
+public:
+    DiveLogMenu() : count_(0), read_error_(false), empty_(false), cache_top_(0)
+    {
+        snprintf(title, sizeof(title), "LOG");
+    }
+
+    void on_enter() override
+    {
+        MenuPage::on_enter();
+        read_error_ = !diveLog.count(count_);
+        empty_ = !read_error_ && count_ == 0;
+        if (read_error_ || empty_) count_ = 1;
+        if (empty_) snprintf(title, sizeof(title), "LOG");
+        refresh_visible();
+        if (empty_) {
+            const time_t end = rtc.now();
+            records_[0] = DiveLogRecord{end - 45 * 60, end, 45 * 60, 24.6f, 13.2f};
+            cached_[0] = true;
+        }
+    }
+
+    void on_button(Ui &ui, ButtonId id) override
+    {
+        const int previous_top = top;
+        MenuPage::on_button(ui, id);
+        if (top != previous_top) refresh_visible();
+    }
+
+protected:
+    int count() const override { return count_; }
+
+    //Shows dive number, maximum depth, duration in whole minutes and UTC date.
+    void label(int i, char *buf, size_t len) const override
+    {
+        if (read_error_) {
+            snprintf(buf, len, "LOG READ ERROR");
+            return;
+        }
+        const int slot = i - cache_top_;
+        if (slot < 0 || slot >= 5 || !cached_[slot]) {
+            snprintf(buf, len, "READ ERROR");
+            return;
+        }
+        const DiveLogRecord &record = records_[slot];
+        char depth[12];
+        units::format_depth(record.max_depth_m, configComputer.get_system_unit(),
+                            depth, sizeof(depth));
+        struct tm date;
+        if (gmtime_r(&record.start_time, &date) == nullptr) {
+            snprintf(buf, len, "%02d %s %lu' --/--/--", i + 1, depth,
+                     (unsigned long) (record.duration_s / 60));
+            return;
+        }
+        snprintf(buf, len, "%02d %s %lu' %02d/%02d/%02d", i + 1, depth,
+                 (unsigned long) (record.duration_s / 60), date.tm_mday,
+                 date.tm_mon + 1, (date.tm_year + 1900) % 100);
+    }
+
+    //Opens the selected dive detail page; informational rows have no action.
+    void select(Ui &ui, int i) override
+    {
+        if (read_error_) return;
+        if (empty_) diveDetail.open_log(ui, records_[0]);
+        else diveDetail.open(ui, i);
+    }
+
+private:
+    void refresh_visible()
+    {
+        cache_top_ = top;
+        for (int slot = 0; slot < 5; ++slot) cached_[slot] = false;
+        if (read_error_ || empty_) return;
+
+        int loaded = 0;
+        if (!diveLog.get_range(cache_top_, records_, 5, loaded)) return;
+        for (int slot = 0; slot < 5; ++slot) {
+            cached_[slot] = slot < loaded;
+        }
+    }
+
+    int count_;
+    bool read_error_;
+    bool empty_;
+    int cache_top_;
+    DiveLogRecord records_[5];
+    bool cached_[5];
+};
+DiveLogMenu diveLogMenu;
+
+/*
+Root menu restricting settings and log access to the surface.
 */
 class RootMenu final : public MenuPage {
 public:
     RootMenu() { snprintf(title, sizeof(title), "MENU"); }
 protected:
-    int count() const override { return dive->in_dive() ? 1 : 3; }
-    //Writes the selected root item name; live dives expose only MIX.
+    int count() const override { return dive->in_dive() ? 1 : 4; }
+    //Writes a root item name; live dives expose only MIX.
     void label(int i, char *buf, size_t len) const override
     {
-        static const char *const NAMES[] = {"MIX", "DIVE", "SYSTEM"};
+        static const char *const NAMES[] = {"MIX", "DIVE", "SYSTEM", "LOG"};
         snprintf(buf, len, "%s", NAMES[i]);
     }
-    //Pushes the selected gas, dive-setting or system submenu.
+    //Pushes the selected gas, dive-setting, system or log page.
     void select(Ui &ui, int i) override
     {
         if (i == 0) ui.show(mixList);
         else if (i == 1) ui.show(diveMenu);
-        else ui.show(systemMenu);
+        else if (i == 2) ui.show(systemMenu);
+        else ui.show(diveLogMenu);
     }
 };
 RootMenu rootMenu;

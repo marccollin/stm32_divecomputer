@@ -51,13 +51,6 @@ bool read_array(char *line, const char *key, float *v, int n)
 }
 }
 
-//Lazily mounts the SD filesystem and caches successful mounting.
-bool TissueStore::mount()
-{
-    if (!mounted_) mounted_ = f_mount(&sdcard_ff, "", 1) == FR_OK;
-    return mounted_;
-}
-
 /*
 Stages complete data in tissue.tmp before replacing tissue.txt by rename.
 This avoids a half-written final file, but unlink then rename is not fully atomic:
@@ -65,11 +58,10 @@ a power loss between those calls can leave no tissue.txt.
 */
 bool TissueStore::save(const TissueState &t, float gf_anchor, time_t timestamp)
 {
-    if (!mount()) return false;
+    if (!sdcard_mount()) return false;
 
     FIL f;
     if (f_open(&f, TMP_NAME, FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) {
-        mounted_ = false;
         return false;
     }
     char line[48];
@@ -88,7 +80,7 @@ bool TissueStore::save(const TissueState &t, float gf_anchor, time_t timestamp)
 //Parses into temporary state and publishes outputs only after version and array validation.
 bool TissueStore::load(TissueState &t, float &gf_anchor, time_t &timestamp)
 {
-    if (!mount()) return false;
+    if (!sdcard_mount()) return false;
 
     FIL f;
     if (f_open(&f, FILE_NAME, FA_OPEN_EXISTING | FA_READ) != FR_OK) return false;

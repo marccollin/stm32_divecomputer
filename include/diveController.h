@@ -10,6 +10,7 @@ Connects gas selection and decompression settings to the tissue model.
 
 #include "buhlmannModel.h"
 #include "decoSettings.h"
+#include "diveLog.h"
 #include "gasMix.h"
 #include "tissueStore.h"
 
@@ -68,7 +69,7 @@ private:
     static const uint32_t DIVE_END_MS = 60000; //Continuous shallow interval to end a dive, ms, 60 s.
     static const uint32_t MAX_OFFGAS_S = 14UL * 24 * 3600; //Saved-state age limit, seconds, 14 days.
 
-    void start_dive();
+    void start_dive(time_t now);
     void end_dive(time_t now);
     void save(uint32_t tick_ms, time_t now);
 
@@ -88,6 +89,9 @@ private:
     float max_depth_m_;
     uint32_t dive_ms_;
     uint32_t shallow_ms_;
+    time_t dive_start_time_;
+    float depth_integral_m_s_;
+    bool dive_log_ready_;
     int ndl_min_;
     float ceiling_m_;
 };

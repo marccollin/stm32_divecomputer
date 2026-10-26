@@ -21,4 +21,9 @@ extern SdCard sdcard;
 #define SDCARD_DRIVE 0
 extern FATFS sdcard_ff;
 
+#ifdef __cplusplus
+//Mounts the shared FatFs volume once for all SD-card stores.
+bool sdcard_mount(void);
+#endif
+
 #endif

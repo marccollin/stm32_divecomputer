@@ -17,7 +17,7 @@ public:
     /*
     Creates an unmounted store; no SD access occurs until load or save.
     */
-    TissueStore() : mounted_(false) {}
+    TissueStore() {}
     /*
     Stores tissue pressures t and gf_anchor in bar with UTC epoch timestamp in seconds.
     Writes tissue.tmp, closes it, removes the old tissue.txt and renames the temporary file.
@@ -34,9 +34,6 @@ public:
     Returns false when the full saved tissue record cannot be loaded.
     */
     bool saved_time(time_t &timestamp);
-private:
-    bool mount();
-    bool mounted_;
 };
 
 extern TissueStore tissueStore;

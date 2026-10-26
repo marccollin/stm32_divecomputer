@@ -14,6 +14,7 @@ Do not rely on it for dive planning or as a primary or backup dive computer.
 - Buhlmann ZHL-16C tissue model with gradient-factor decompression estimates.
 - Air, nitrox, and trimix support in the gas model.
 - SD-card storage of tissue state.
+- Completed-dive log with maximum and average depth, duration, and UTC start/end times.
 - Three-button menus, demo screens, and clock, units, water-type, language, gas, and decompression settings.
 - 128×64 display interface and low-power idle behavior at the surface.
 
