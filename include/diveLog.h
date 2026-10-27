@@ -13,6 +13,7 @@ struct DiveLogRecord {
     uint32_t duration_s;
     float max_depth_m;
     float average_depth_m;
+    bool missed_deco; //A required ceiling was violated; legacy entries have no recorded violation.
 };
 
 /*

@@ -2,6 +2,7 @@
 SD-card history of completed dives.
 */
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -23,11 +24,18 @@ bool parse_record(const char *line, DiveLogRecord &record)
     int consumed = 0;
     if (sscanf(line, "%ld,%ld,%lu,%f,%f%n", &start, &end, &duration,
                &max_depth, &average_depth, &consumed) != 5) return false;
+    int violation = 0;
+    if (line[consumed] == ',') {
+        int extra = 0;
+        if (sscanf(line + consumed, ",%d%n", &violation, &extra) != 1
+            || (violation != 0 && violation != 1)) return false;
+        consumed += extra;
+    }
     for (const char *p = line + consumed; *p != '\0'; ++p) {
         if (*p != '\r' && *p != '\n') return false;
     }
     if (start < 0 || end < start || duration == 0 || duration > UINT32_MAX
-        || max_depth != max_depth || average_depth != average_depth
+        || !isfinite(max_depth) || !isfinite(average_depth)
         || max_depth < 0.0f || max_depth > 1000.0f
         || average_depth < 0.0f || average_depth > max_depth) return false;
 
@@ -36,6 +44,7 @@ bool parse_record(const char *line, DiveLogRecord &record)
     record.duration_s = (uint32_t) duration;
     record.max_depth_m = max_depth;
     record.average_depth_m = average_depth;
+    record.missed_deco = violation == 1;
     return true;
 }
 
@@ -138,8 +147,8 @@ bool DiveLog::append(const DiveLogRecord &record)
 {
     if (!sdcard_mount() || record.start_time < 0 || record.end_time < record.start_time
         || record.duration_s == 0 || record.max_depth_m < 0.0f
-        || record.max_depth_m != record.max_depth_m
-        || record.average_depth_m != record.average_depth_m
+        || !isfinite(record.max_depth_m)
+        || !isfinite(record.average_depth_m)
         || record.max_depth_m > 1000.0f
         || record.average_depth_m < 0.0f || record.average_depth_m > record.max_depth_m) {
         return false;
@@ -150,9 +159,10 @@ bool DiveLog::append(const DiveLogRecord &record)
     bool ok = f_lseek(&file, f_size(&file)) == FR_OK;
 
     char line[96];
-    snprintf(line, sizeof(line), "%ld,%ld,%lu,%.2f,%.2f\n",
+    snprintf(line, sizeof(line), "%ld,%ld,%lu,%.2f,%.2f,%d\n",
              (long) record.start_time, (long) record.end_time,
-             (unsigned long) record.duration_s, record.max_depth_m, record.average_depth_m);
+             (unsigned long) record.duration_s, record.max_depth_m, record.average_depth_m,
+             record.missed_deco ? 1 : 0);
     if (ok) ok = f_puts(line, &file) >= 0;
     if (ok) ok = f_sync(&file) == FR_OK;
     const FRESULT closed = f_close(&file);

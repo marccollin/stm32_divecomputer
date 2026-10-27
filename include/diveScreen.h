@@ -32,6 +32,7 @@ struct DiveView {
     float temperature_c; //Water temperature, degrees Celsius.
     bool clock_set; //True if the RTC time has been confirmed by the user.
     time_t now; //UTC epoch timestamp, seconds; no timezone conversion.
+    bool missed_deco; //Latched ceiling violation for the current/last dive.
 };
 
 /*

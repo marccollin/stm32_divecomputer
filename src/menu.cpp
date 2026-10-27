@@ -567,7 +567,7 @@ public:
     void open(Ui &ui, int index)
     {
         has_record_ = diveLog.get(index, record_);
-        if (has_record_) snprintf(title_, sizeof(title_), "DIVE %02d", index + 1);
+        if (has_record_) snprintf(title_, sizeof(title_), record_.missed_deco ? "MISSED DECO" : "DIVE %02d", index + 1);
         else snprintf(title_, sizeof(title_), "LOG ERROR");
         ui.show(*this);
     }
@@ -576,7 +576,7 @@ public:
     {
         record_ = record;
         has_record_ = true;
-        snprintf(title_, sizeof(title_), "DIVE");
+        snprintf(title_, sizeof(title_), "%s", record_.missed_deco ? "MISSED DECO" : "DIVE");
         ui.show(*this);
     }
 
@@ -658,7 +658,7 @@ public:
         refresh_visible();
         if (empty_) {
             const time_t end = rtc.now();
-            records_[0] = DiveLogRecord{end - 45 * 60, end, 45 * 60, 24.6f, 13.2f};
+            records_[0] = DiveLogRecord{end - 45 * 60, end, 45 * 60, 24.6f, 13.2f, false};
             cached_[0] = true;
         }
     }

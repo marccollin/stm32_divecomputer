@@ -33,8 +33,9 @@ public:
     void begin(float p_surface, time_t now);
     /*
     Consumes absolute ambient pressure p_amb in bar, monotonic tick_ms in ms, and UTC now.
-    Updates loading, NDL and plan; starts deeper than 1.2 m and ends after 60 s below 0.8 m.
-    Saves every 60 s and at dive end.
+    Starts deeper than 1.2 m; a sample below 0.8 m begins a five-minute merge window.
+    Descending past 1.2 m before expiry resumes the same dive.
+    Saves every 60 s, on surface transitions and at dive end.
     */
     void sample(float p_amb, uint32_t tick_ms, time_t now);
 
@@ -61,12 +62,14 @@ public:
     int ndl_min() const { return ndl_min_; }
     //Returns current ceiling in metres, zero when surfacing is tolerated.
     float ceiling_m() const { return ceiling_m_; }
+    //Latched ceiling violation for the current/last dive; resets when a new dive starts.
+    bool missed_deco() const { return missed_deco_; }
     //Returns the current ascent plan, empty when NDL is nonzero.
     const DecoPlan &plan() const { return plan_; }
 
 private:
     static const uint32_t SAVE_PERIOD_MS = 60000; //Periodic save interval, ms, 60 s.
-    static const uint32_t DIVE_END_MS = 60000; //Continuous shallow interval to end a dive, ms, 60 s.
+    static const uint32_t DIVE_END_MS = 300000; //Surface merge window, ms, five minutes.
     static const uint32_t MAX_OFFGAS_S = 14UL * 24 * 3600; //Saved-state age limit, seconds, 14 days.
 
     void start_dive(time_t now);
@@ -89,9 +92,13 @@ private:
     float max_depth_m_;
     uint32_t dive_ms_;
     uint32_t shallow_ms_;
+    bool surface_pending_;
+    time_t surface_time_;
+    float surface_integral_m_s_;
     time_t dive_start_time_;
     float depth_integral_m_s_;
     bool dive_log_ready_;
+    bool missed_deco_;
     int ndl_min_;
     float ceiling_m_;
 };
