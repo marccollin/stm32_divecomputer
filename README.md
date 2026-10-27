@@ -44,7 +44,6 @@ Do not rely on it for dive planning or as a primary or backup dive computer.
 ├── SConstruct      # SCons build configuration (main)
 ├── SConscript      # SCons build configuration
 ├── setup           # Environment setup script
-└── include.zip     # Archived headers
 ```
 
 ## Getting Started
