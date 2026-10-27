@@ -2,6 +2,7 @@
 SD-card history of completed dives.
 */
 #include <limits.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -34,7 +35,7 @@ bool parse_record(const char *line, DiveLogRecord &record)
         if (*p != '\r' && *p != '\n') return false;
     }
     if (start < 0 || end < start || duration == 0 || duration > UINT32_MAX
-        || max_depth != max_depth || average_depth != average_depth
+        || !isfinite(max_depth) || !isfinite(average_depth)
         || max_depth < 0.0f || max_depth > 1000.0f
         || average_depth < 0.0f || average_depth > max_depth) return false;
 
@@ -146,8 +147,8 @@ bool DiveLog::append(const DiveLogRecord &record)
 {
     if (!sdcard_mount() || record.start_time < 0 || record.end_time < record.start_time
         || record.duration_s == 0 || record.max_depth_m < 0.0f
-        || record.max_depth_m != record.max_depth_m
-        || record.average_depth_m != record.average_depth_m
+        || !isfinite(record.max_depth_m)
+        || !isfinite(record.average_depth_m)
         || record.max_depth_m > 1000.0f
         || record.average_depth_m < 0.0f || record.average_depth_m > record.max_depth_m) {
         return false;
