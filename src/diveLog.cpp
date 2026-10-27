@@ -23,6 +23,13 @@ bool parse_record(const char *line, DiveLogRecord &record)
     int consumed = 0;
     if (sscanf(line, "%ld,%ld,%lu,%f,%f%n", &start, &end, &duration,
                &max_depth, &average_depth, &consumed) != 5) return false;
+    int violation = 0;
+    if (line[consumed] == ',') {
+        int extra = 0;
+        if (sscanf(line + consumed, ",%d%n", &violation, &extra) != 1
+            || (violation != 0 && violation != 1)) return false;
+        consumed += extra;
+    }
     for (const char *p = line + consumed; *p != '\0'; ++p) {
         if (*p != '\r' && *p != '\n') return false;
     }
@@ -36,6 +43,7 @@ bool parse_record(const char *line, DiveLogRecord &record)
     record.duration_s = (uint32_t) duration;
     record.max_depth_m = max_depth;
     record.average_depth_m = average_depth;
+    record.missed_deco = violation == 1;
     return true;
 }
 
@@ -150,9 +158,10 @@ bool DiveLog::append(const DiveLogRecord &record)
     bool ok = f_lseek(&file, f_size(&file)) == FR_OK;
 
     char line[96];
-    snprintf(line, sizeof(line), "%ld,%ld,%lu,%.2f,%.2f\n",
+    snprintf(line, sizeof(line), "%ld,%ld,%lu,%.2f,%.2f,%d\n",
              (long) record.start_time, (long) record.end_time,
-             (unsigned long) record.duration_s, record.max_depth_m, record.average_depth_m);
+             (unsigned long) record.duration_s, record.max_depth_m, record.average_depth_m,
+             record.missed_deco ? 1 : 0);
     if (ok) ok = f_puts(line, &file) >= 0;
     if (ok) ok = f_sync(&file) == FR_OK;
     const FRESULT closed = f_close(&file);

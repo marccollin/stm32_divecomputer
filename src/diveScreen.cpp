@@ -36,7 +36,9 @@ void DiveScreen::format(const DiveView &v)
         snprintf(line3, sizeof(line3), "MAX %s", value);
     }
 
-    if (v.in_dive) {
+    if (v.missed_deco) {
+        snprintf(line4, sizeof(line4), "MISSED DECO%s", v.clock_set ? "" : "  SET TIME");
+    } else if (v.in_dive) {
         snprintf(line4, sizeof(line4), "%s  %s", gas, temp);
     } else if (!v.clock_set) {
         snprintf(line4, sizeof(line4), "%s  %s  SET TIME", gas, temp);

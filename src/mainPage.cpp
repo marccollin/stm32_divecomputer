@@ -21,6 +21,7 @@ void MainPage::update(float pressure_bar, float temperature_c, time_t now)
     v.dive_time_s = dive.dive_time_s();
     v.ndl_min = dive.ndl_min();
     v.ceiling_m = dive.ceiling_m();
+    v.missed_deco = dive.missed_deco();
     v.has_stop = plan.count > 0;
     if (v.has_stop) {
         v.stop_depth_m = plan.stops[0].depth_m;

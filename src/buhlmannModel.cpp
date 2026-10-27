@@ -30,6 +30,7 @@ const float HE_B[N] = {0.4770, 0.5747, 0.6527, 0.7223, 0.7582, 0.7957, 0.8279, 0
 
 const float LN2 = 0.69314718f; //Natural logarithm of two, dimensionless.
 const float CEILING_STEP_BAR = 0.01f; //Ceiling-search pressure increment, bar.
+const float CEILING_TOLERANCE_M = 1.0f; //Warning tolerance only; does not relax the ascent plan.
 const int MAX_STOP_MIN = 255; //Per-stop simulation cap, minutes; fits uint8_t.
 const int MAX_TOTAL_MIN = 999; //Total stop-time simulation cap, minutes.
 
@@ -160,6 +161,12 @@ float BuhlmannModel::ceiling_m(const DecoSettings &s) const
     }
     const float depth = (p - p_surface_) / s.bar_per_m;
     return depth > 0.0f ? depth : 0.0f;
+}
+
+bool BuhlmannModel::ceiling_violated(float p_amb, const DecoSettings &s) const
+{
+    const float p_tolerated = p_amb + CEILING_TOLERANCE_M * s.bar_per_m;
+    return !tolerates(tissues, p_tolerated, gf_at(p_tolerated, gf_anchor_, s));
 }
 
 //Simulates copied tissues in one-minute steps and tests surface tolerance at GF high.

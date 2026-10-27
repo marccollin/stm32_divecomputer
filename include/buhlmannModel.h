@@ -87,6 +87,8 @@ public:
     Zero means surfacing is tolerated.
     */
     float ceiling_m(const DecoSettings &s) const;
+    //True when more than 1 metre above the GF-adjusted ceiling; warning tolerance only.
+    bool ceiling_violated(float p_amb, const DecoSettings &s) const;
     /*
     Returns whole minutes at absolute p_amb in bar on gas before a stop is needed.
     Uses settings s; returns 0 for decompression or at most NDL_MAX (99).

@@ -15,6 +15,20 @@ Do not rely on it for dive planning or as a primary or backup dive computer.
 - Air, nitrox, and trimix support in the gas model.
 - SD-card storage of tissue state.
 - Completed-dive log with maximum and average depth, duration, and UTC start/end times.
+- Surface breaks shorter than five minutes merge into the same dive. A sample below 0.8 m
+  starts the window; descending past 1.2 m resumes it. At five minutes the dive closes
+  with its original surfacing timestamp, excluding the final wait from duration/average depth.
+  Intermediate breaks remain part of a merged dive. Pending state is saved on transitions
+  and every minute; after restart, elapsed RTC time advances an already pending surface window.
+  Unknown/negative elapsed time does not advance it. Unobserved underwater activity cannot be recovered.
+- Latched `MISSED DECO` warning when a sample is more than 1 metre above the model's required
+  ceiling (40 m ceiling: 39 m is tolerated, shallower than 39 m triggers the warning).
+  This warning tolerance does not change the required ceiling or ascent plan.
+  The flag is saved immediately with tissues, survives restart, and is retained in completed-dive
+  history (`dives.csv`, sixth column: 0/1). The live warning resets at the next dive, not when
+  the ceiling clears. Legacy five-column logs and version-1 tissue files remain readable,
+  but contain no recorded violation information. Detection is sample-based and cannot recover
+  violations while the computer is off. This is not a flight-clearance or medical assessment.
 - Three-button menus, demo screens, and clock, units, water-type, language, gas, and decompression settings.
 - 128×64 display interface and low-power idle behavior at the surface.
 
