@@ -1,8 +1,8 @@
 /*---------------------------------------------------------------------------/
-/  FatFs - FAT file system module configuration file  R0.11 (C)ChaN, 2015
+/  FatFs - FAT file system module configuration file  R0.11a (C)ChaN, 2015
 /---------------------------------------------------------------------------*/
 
-#define _FFCONF 32020	/* Revision ID */
+#define _FFCONF 64180	/* Revision ID */
 
 /*---------------------------------------------------------------------------/
 / Functions and Buffer Configurations
