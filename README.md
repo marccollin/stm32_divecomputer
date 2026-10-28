@@ -14,6 +14,7 @@ Do not rely on it for dive planning or as a primary or backup dive computer.
 - Buhlmann ZHL-16C tissue model with gradient-factor decompression estimates.
 - Air, nitrox, and trimix support in the gas model.
 - SD-card storage of tissue state.
+- FatFs R0.11a with the existing STM32 SDIO driver and project-specific configuration.
 - Completed-dive log with maximum and average depth, duration, and UTC start/end times.
 - Surface breaks shorter than five minutes merge into the same dive. A sample below 0.8 m
   starts the window; descending past 1.2 m resumes it. At five minutes the dive closes

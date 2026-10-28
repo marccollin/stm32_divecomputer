@@ -1,4 +1,10 @@
-FatFs Module Source Files R0.11
+FatFs Module Source Files R0.11a
+
+Source: https://elm-chan.org/fsw/ff/arc/ff11a.zip
+The core and option sources are from the official R0.11a archive.
+Project configuration, disk interface and fixed-width integer definitions
+remain in include/ffconf.h, include/diskio.h and include/integer.h.
+The STM32 SDIO implementation is in src/sdcard.cpp.
 
 
 FILES
@@ -18,4 +24,3 @@ FILES
   module is only a generic file system layer and not depend on any specific
   storage device. You have to provide a low level disk I/O module that written
   to control the target storage device.
-

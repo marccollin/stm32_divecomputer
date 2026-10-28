@@ -14,8 +14,7 @@
 
 using namespace std;
 
-FileUtility::FileUtility(const char *fileName) {
-    this->fileName=fileName;
+FileUtility::FileUtility(const char *path) : fileName(path) {
 }
 
 void FileUtility::fileOpen(BYTE mode) {
@@ -82,4 +81,3 @@ void FileUtility::writeAllProperties(map <string, string> fileMapConfig) {
 
 FileUtility::~FileUtility() {
 }
-

@@ -15,7 +15,7 @@ using namespace std;
 
 class FileUtility {
 public:
-    FileUtility(const char *fileName);
+    FileUtility(const char *path);
     map<std::string, string> readAllFile();
     void writeAllProperties(map <string, string> fileMapConfig);
     virtual ~FileUtility();
@@ -27,4 +27,3 @@ private:
 };
 
 #endif	/* FILEUTILITY_H */
-
